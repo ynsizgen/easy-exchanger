@@ -24,5 +24,7 @@ public class ExchangeEntity {
 
     private LocalDateTime nextUpdateTime;
 
+    private LocalDateTime dataGettingTime;
+
     private Map<String,Double> conversionRates;
 }

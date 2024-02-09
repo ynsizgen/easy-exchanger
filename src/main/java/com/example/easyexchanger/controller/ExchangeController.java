@@ -17,7 +17,7 @@ public class ExchangeController {
 
     @GetMapping("/{exchangeRate}")
     @ResponseStatus(HttpStatus.OK)
-    public ExchangeDTO getDataFromExchangeApi(@PathVariable String exchangeRate)  {
-        return exchangeService.getDataFromExchangeApi(exchangeRate);
+    public ExchangeDTO getExchangeData(@PathVariable("exchangeRate") String exchangeRate)  {
+        return exchangeService.getExchangeData(exchangeRate);
     }
 }

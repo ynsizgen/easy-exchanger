@@ -9,3 +9,11 @@ spring:
       password: admin
   application:
     name: easy-exchanger
+
+  config:
+    import: optional:file:.env[.properties]
+
+
+easy-exchanger:
+  api-url: "https://v6.exchangerate-api.com"
+  api-key: ${EXCHANGER_API_KEY:default-key}

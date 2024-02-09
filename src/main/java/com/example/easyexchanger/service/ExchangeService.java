@@ -1,5 +1,6 @@
 package com.example.easyexchanger.service;
 
+import com.example.easyexchanger.constants.Constants;
 import com.example.easyexchanger.dto.ExchangeDTO;
 import com.example.easyexchanger.dto.GetExchangeResponse;
 import com.example.easyexchanger.model.ExchangeEntity;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class ExchangeService {
@@ -28,24 +30,30 @@ public class ExchangeService {
     }
 
 
-    String url ="6666846074f457cbd4fb9b70";
+    public ExchangeDTO getExchangeData(String exchangeRate) {
+
+        Optional<ExchangeEntity> optionalExchangeEntity = this.exchangeRepository.findFirstByExchangeRateOrderByNextUpdateTimeDesc(exchangeRate.toUpperCase());
+
+        return optionalExchangeEntity.map(exchangeEntity -> {
+            if(exchangeEntity.getLastUpdateTime().isBefore(LocalDateTime.now().minusDays(1))){
+                return getDataFromExchangeApi(exchangeRate);
+            }
+            return ExchangeDTO.convert(exchangeEntity);
+        }).orElseGet(() -> getDataFromExchangeApi(exchangeRate));
+    }
 
 
-    public ExchangeDTO getDataFromExchangeApi(String exchangeRate) {
+    private ExchangeDTO getDataFromExchangeApi(String exchangeRate) {
 
-        ResponseEntity<String> responseEntity = restTemplate.getForEntity("https://v6.exchangerate-api.com/v6/" + url + "/latest/" + exchangeRate, String.class);
+        String url = getExchangeRateApiUrl(exchangeRate);
+        ResponseEntity<String> responseEntity = restTemplate.getForEntity(url , String.class);
 
         try{
             GetExchangeResponse getExchangeResponse = objectMapper.readValue(responseEntity.getBody(), GetExchangeResponse.class);
             ExchangeEntity exchangeEntity = saveExchangeEntity(getExchangeResponse);
-            return new ExchangeDTO(
-                    exchangeEntity.getExchangeRate(),
-                    exchangeEntity.getNextUpdateTime(),
-                    exchangeEntity.getLastUpdateTime(),
-                    exchangeEntity.getConversionRates());
-        }catch (JsonProcessingException e){
-            e.printStackTrace();
-            return null;
+            return ExchangeDTO.convert(exchangeEntity);
+        }catch (JsonProcessingException ex){
+            throw new RuntimeException(ex.getMessage());
         }
 
     }
@@ -60,9 +68,12 @@ public class ExchangeService {
         exchangeEntity.setExchangeRate(response.baseCode());
         exchangeEntity.setNextUpdateTime(LocalDateTime.parse(response.timeNextUpdateUtc(),formatter));
         exchangeEntity.setLastUpdateTime(LocalDateTime.parse(response.timeLastUpdateUtc(),formatter));
+        exchangeEntity.setDataGettingTime(LocalDateTime.now());
         exchangeEntity.setConversionRates(conversion_rates);
 
         return exchangeRepository.save(exchangeEntity);
     }
-
+    public String getExchangeRateApiUrl(String exchangeRate){
+        return Constants.API_URL + Constants.API_VERSION + Constants.API_KEY + Constants.API_STATUS + exchangeRate;
+    }
 }
